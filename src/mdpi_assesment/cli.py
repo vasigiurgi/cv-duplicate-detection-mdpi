@@ -1,5 +1,8 @@
 import click
+from pathlib import Path
 from mdpi_assesment.task1.process_image import process_random_image
+from mdpi_assesment.task2.duplicate_detector import run_task2
+
 
 @click.group()
 def main():
@@ -13,3 +16,17 @@ def task1(random):
     if random:
         results = process_random_image()
         click.echo(f"Processed images saved: {results}")
+
+@main.command()
+@click.option("--src", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--out", required=True, type=click.Path(path_type=Path))
+@click.option(
+    "--strategy",
+    default="embedding_nn",
+    type=click.Choice(["embedding_nn"]),
+    show_default=True,
+)
+
+def task2(src: Path, out: Path, strategy: str):
+    """Run Task 2: detect duplicated images."""
+    run_task2(src, out, strategy)
