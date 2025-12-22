@@ -1,54 +1,56 @@
-"""
-Strategy based on perceptual hashing to find near-duplicate images
-"""
+from __future__ import annotations
 
 from itertools import combinations
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 from PIL import Image
 import imagehash
 
-def find_phash_candidates(images, threshold=10, debug=False):
-    # threshold based on max Hamming distance for similarities, added debug
-    if not images:
-        if debug:
-            print("No images provided for pHash comparison")
+from mdpi_assessment.logger import logger
+
+
+def find_phash_candidates(
+    image_paths: List[Path],
+    threshold: int = 10,
+) -> List[Tuple[str, str, float]]:
+    """
+    Detect near-duplicate images using perceptual hashing (pHash).
+
+    threshold is the maximum Hamming distance allowed to consider
+    two images as duplicates.
+    """
+    if not image_paths:
+        logger.warning("No images provided for pHash comparison.")
         return []
 
-    hashes = {}
+    phash_by_name: Dict[str, imagehash.ImageHash] = {}
 
-    # compute hashes with error handling
-    for p in images:
+    for image_path in image_paths:
         try:
-            with Image.open(p) as img:
-                hashes[p.name] = imagehash.phash(img)
-        except Exception as e:
-            if debug:
-                print(f"Failed to hash {p}: {e}")
+            with Image.open(image_path) as pil_image:
+                phash_by_name[image_path.name] = imagehash.phash(pil_image)
+        except Exception as exc:
+            logger.warning("Failed to hash %s: %s", image_path, exc)
 
-    if len(hashes) < 2:
-        if debug:
-            print("Not enough images successfully hashed for comparison")
+    if len(phash_by_name) < 2:
+        logger.warning("Not enough images successfully hashed for comparison.")
         return []
 
-    results = []
+    results: List[Tuple[str, str, float]] = []
 
-    for (a_name, a_hash), (b_name, b_hash) in combinations(hashes.items(), 2):
+    for (name_a, hash_a), (name_b, hash_b) in combinations(phash_by_name.items(), 2):
         try:
-            dist = a_hash - b_hash
-            max_bits = a_hash.hash.size
-            score = 1.0 - (dist / max_bits)
+            hamming_distance = hash_a - hash_b
+            max_bits = hash_a.hash.size
+            similarity_score = 1.0 - (hamming_distance / max_bits)
 
-            if debug:
-                print(f"{a_name} <-> {b_name} | dist={dist} score={score:.3f}")
-
-            if dist <= threshold:
-                a, b = (a_name, b_name) if a_name < b_name else (b_name, a_name)
-                results.append((a, b, float(score)))
-        except Exception as e:
-            if debug:
-                print(f"Error comparing {a_name} and {b_name}: {e}")
+            if hamming_distance <= threshold:
+                image_a_name, image_b_name = sorted([name_a, name_b])
+                results.append((image_a_name, image_b_name, float(similarity_score)))
+        except Exception as exc:
+            logger.warning("Error comparing %s and %s: %s", name_a, name_b, exc)
             continue
 
-    if debug:
-        print(f"Total pHash candidate pairs: {len(results)}")
-
+    logger.info("Total pHash candidate pairs: %d", len(results))
     return results

@@ -1,20 +1,20 @@
-"""
-Execute the full workflow:
-1. Run all similarity strategies
-2. Aggregate candidate pairs
-3. Verify candidates using ELA
-
-Run workflow starting from existing CSVs:
-1. Aggregate candidate pairs from provided CSVs
-2. Verify candidates using ELA
-"""
+from __future__ import annotations
 
 from pathlib import Path
-import csv
-from mdpi_assessment.task2.duplicate_detector import run_task2  # Run a single similarity strategy
-from mdpi_assessment.task2.aggregation.candidate_collector import collect_candidates  # Merge results from multiple strategies
-from mdpi_assessment.task2.verification.run_forensics import run_forensics  # ELA verification
-from mdpi_assessment.config import RAW_DIR  # Default folder for raw images
+from typing import Dict, List, Tuple
+
+from mdpi_assessment.config import RAW_DIR
+from mdpi_assessment.logger import logger
+from mdpi_assessment.task2.aggregation.candidate_collector import collect_candidates
+from mdpi_assessment.task2.duplicate_detector import STRATEGY_REGISTRY, run_task2
+from mdpi_assessment.task2.verification.run_forensics import run_forensics
+
+
+def build_strategy_csvs(results_directory: Path) -> Dict[str, Path]:
+    return {
+        strategy_name: results_directory / strategy.csv_name
+        for strategy_name, strategy in STRATEGY_REGISTRY.items()
+    }
 
 
 def run_full_workflow(
@@ -22,76 +22,66 @@ def run_full_workflow(
     results_dir: Path,
     min_votes: int = 2,
     ela_threshold: float = 0.85,
-):
-
+) -> List[Dict]:
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Step 1: Run each similarity strategy ---
-    strategy_outputs = {
-        "find_equal": results_dir / "task2_equal.csv",
-        "find_phash": results_dir / "task2_phash.csv",
-        "find_local_features": results_dir / "task2_local_features.csv",
-        "find_embedding_nn": results_dir / "task2_embedding_nn.csv",
-    }
+    strategy_outputs: Dict[str, Path] = build_strategy_csvs(results_dir)
 
-    for strategy_name, out_csv in strategy_outputs.items():
-        print(f"\n[Step 1] Running strategy: {strategy_name}")
-        run_task2(src, out_csv, strategy_name)
+    for strategy_name, output_csv_path in strategy_outputs.items():
+        logger.info("[Step 1] Running strategy: %s", strategy_name)
+        run_task2(src, output_csv_path, strategy_name)
 
-    # --- Step 2: Aggregate candidates from all strategies ---
-    print("\n[Step 2] Aggregating candidate pairs...")
-    csvs = [(path, name) for name, path in strategy_outputs.items()]
-    candidates = collect_candidates(csvs, min_votes=min_votes)
-    print(f"[Step 2] Collected {len(candidates)} candidate pairs")
+    logger.info("[Step 2] Aggregating candidate pairs...")
+    strategy_csv_specs: List[Tuple[Path, str]] = [
+        (output_path, strategy_name)
+        for strategy_name, output_path in strategy_outputs.items()
+    ]
+    candidate_pairs = collect_candidates(strategy_csv_specs, min_votes=min_votes)
+    logger.info("[Step 2] Collected %d candidate pairs", len(candidate_pairs))
 
-    # --- Step 3: Run ELA forensic verification ---
-    forensic_out = results_dir / "task2_forensics_from_scratch.csv"
-    print("\n[Step 3] Running forensic verification (ELA)...")
+    forensic_output_csv = results_dir / "task2_forensics_from_scratch.csv"
+    logger.info("[Step 3] Running forensic verification (ELA)...")
     final_results = run_forensics(
-        candidates=candidates,
-        image_dir=src,
-        out_path=forensic_out,
+        candidates=candidate_pairs,
+        image_directory=src,
+        output_csv_path=forensic_output_csv,
         ela_threshold=ela_threshold,
     )
 
-    print("\nWorkflow finished")
-    print(f"Final forensic candidates: {len(final_results)}")
-    print(f"Results saved to: {forensic_out}")
-
+    logger.info("Workflow finished. Final forensic candidates: %d", len(final_results))
+    logger.info("Results saved to: %s", forensic_output_csv)
     return final_results
 
 
 def run_workflow_from_csvs(
     results_dir: Path,
-    strategy_csvs: dict,
-    image_dir: Path = None,
-    min_votes=2,
-    ela_threshold=0.85,
-):
+    strategy_csvs: Dict[str, Path],
+    image_dir: Path | None = None,
+    min_votes: int = 2,
+    ela_threshold: float = 0.85,
+) -> List[Dict]:
     results_dir.mkdir(parents=True, exist_ok=True)
 
     if image_dir is None:
         image_dir = RAW_DIR
-        print(f"No image_dir specified, using default RAW_DIR: {RAW_DIR}")
+        logger.info("No image_dir specified, using default RAW_DIR: %s", RAW_DIR)
 
-    # --- Aggregate candidates ---
-    print("\nCollecting candidates across strategies...")
-    csvs = [(path, name) for name, path in strategy_csvs.items()]
-    candidates = collect_candidates(csvs, min_votes=min_votes)
-    print(f"Collector retained {len(candidates)} candidate pairs")
+    logger.info("Collecting candidates across strategies...")
+    strategy_csv_specs: List[Tuple[Path, str]] = [
+        (csv_path, strategy_name) for strategy_name, csv_path in strategy_csvs.items()
+    ]
+    candidate_pairs = collect_candidates(strategy_csv_specs, min_votes=min_votes)
+    logger.info("Collector retained %d candidate pairs", len(candidate_pairs))
 
-    # --- Run forensic verification ---
-    forensic_out = results_dir / "task2_forensics_from_existing_data.csv"
-    print("\nRunning forensic verification (ELA)...")
-
+    forensic_output_csv = results_dir / "task2_forensics_from_existing_data.csv"
+    logger.info("Running forensic verification (ELA)...")
     final_results = run_forensics(
-        candidates=candidates,
-        image_dir=image_dir,
-        out_path=forensic_out,
+        candidates=candidate_pairs,
+        image_directory=image_dir,
+        output_csv_path=forensic_output_csv,
         ela_threshold=ela_threshold,
     )
 
-    print(f"\nWorkflow completed.")
-    print(f"Final forensic candidates: {len(final_results)}")
-    print(f"Results written to: {forensic_out}")
+    logger.info("Workflow completed. Final forensic candidates: %d", len(final_results))
+    logger.info("Results written to: %s", forensic_output_csv)
     return final_results

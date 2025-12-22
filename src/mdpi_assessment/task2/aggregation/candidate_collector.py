@@ -1,36 +1,28 @@
-"""
-A wrapper to aggregate computed candidates via the strategies with customizable selection of minimal candidates
-"""
-
-import csv
 from pathlib import Path
 from collections import defaultdict
+import csv
+from typing import List, Tuple, Dict
+from mdpi_assessment.logger import logger
 
-
-def collect_candidates(csv_files, min_votes=2):
+def collect_candidates(
+    csv_files: List[Tuple[Path, str]], 
+    min_votes: int = 2
+) -> List[Dict[str, str]]:
+    # aggregate candidates from multiple strategies with vote threshold
     
-    # Store votes per pair: count, sources contributing, scores
-    votes = defaultdict(lambda: {
-        "count": 0,
-        "sources": [],
-        "scores": []
-    })
+    votes: defaultdict = defaultdict(lambda: {"count": 0, "sources": [], "scores": []})
 
-    # --- Count votes from each strategy ---
     for csv_path, strategy in csv_files:
         with csv_path.open() as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Ensure consistent ordering of image pairs
                 a, b = sorted([row["image_a"], row["image_b"]])
                 score = float(row.get("score", 0))
-
                 key = (a, b)
                 votes[key]["count"] += 1
                 votes[key]["sources"].append(strategy)
                 votes[key]["scores"].append(score)
 
-    # --- Filter pairs that meet the minimum vote threshold ---
     results = []
     for (a, b), info in votes.items():
         if info["count"] >= min_votes:
@@ -42,4 +34,5 @@ def collect_candidates(csv_files, min_votes=2):
                 "max_score": max(info["scores"]),
             })
 
+    logger.info(f"Aggregated candidates meeting min_votes={min_votes}: {len(results)}")
     return results

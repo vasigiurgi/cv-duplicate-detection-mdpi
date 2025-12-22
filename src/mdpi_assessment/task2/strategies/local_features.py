@@ -1,62 +1,72 @@
-"""
-Strategy to find local features based on a threshold and a mininum of matches
-It uses ORB keypoints and descriptors for each image, followed by a k-NN matching and filtering
-RANSAC is also applied for geometric consitency
-"""
-from pathlib import Path
+from __future__ import annotations
+
 from itertools import combinations
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 import cv2
 import numpy as np
 
-def find_local_features_candidates(images, threshold=0.20, min_matches=20, debug=False):
-    """
-    threshold (float): minimum similarity score 
-    min_matches (int): minimum number of good ORB matches to attempt homography.
-    """ 
+from mdpi_assessment.logger import logger
+
+
+def find_local_features_candidates(
+    image_paths: List[Path],
+    threshold: float = 0.20,
+    min_matches: int = 20,
+) -> List[Tuple[str, str, float]]:
+    """Find local feature-based duplicate candidates using ORB + BF + RANSAC."""
     orb = cv2.ORB_create(nfeatures=1000)
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING)
+    bf_matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
-    keypoints = {}
-    descriptors = {}
+    keypoints_by_name: Dict[str, List[cv2.KeyPoint]] = {}
+    descriptors_by_name: Dict[str, np.ndarray] = {}
 
-    # Extracting features
-    for p in images:
-        img = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            continue
-        kp, des = orb.detectAndCompute(img, None)
-        if des is not None:
-            keypoints[p.name] = kp
-            descriptors[p.name] = des
-
-    results = []
-
-    # Comparison of unique image pairs
-    for a, b in combinations(descriptors.keys(), 2):
-        des1, des2 = descriptors[a], descriptors[b]
-        kp1, kp2 = keypoints[a], keypoints[b]
-
-        # k-NN matching and filtering
-        matches = bf.knnMatch(des1, des2, k=2)
-        good = [m for m, n in matches if m.distance < 0.65 * n.distance]
-
-        if len(good) < min_matches:
+    for image_path in image_paths:
+        gray_image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+        if gray_image is None:
+            logger.warning("Could not load image %s", image_path)
             continue
 
-        # RANSAC to complete geometric verification 
-        pts1 = np.float32([kp1[m.queryIdx].pt for m in good])
-        pts2 = np.float32([kp2[m.trainIdx].pt for m in good])
-        H, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 5.0)
-        if mask is None:
+        keypoints, descriptors = orb.detectAndCompute(gray_image, None)
+        if descriptors is not None:
+            keypoints_by_name[image_path.name] = keypoints
+            descriptors_by_name[image_path.name] = descriptors
+
+    results: List[Tuple[str, str, float]] = []
+
+    for image_name_a, image_name_b in combinations(descriptors_by_name.keys(), 2):
+        descriptors_a = descriptors_by_name[image_name_a]
+        descriptors_b = descriptors_by_name[image_name_b]
+        keypoints_a = keypoints_by_name[image_name_a]
+        keypoints_b = keypoints_by_name[image_name_b]
+
+        matches = bf_matcher.knnMatch(descriptors_a, descriptors_b, k=2)
+        good_matches = [m for m, n in matches if m.distance < 0.65 * n.distance]
+
+        if len(good_matches) < min_matches:
             continue
 
-        inliers = int(mask.sum())
-        score = inliers / min(len(des1), len(des2))
+        points_a = np.float32([keypoints_a[m.queryIdx].pt for m in good_matches])
+        points_b = np.float32([keypoints_b[m.trainIdx].pt for m in good_matches])
+        homography_matrix, inlier_mask = cv2.findHomography(points_a, points_b, cv2.RANSAC, 5.0)
 
-        if debug:
-            print(f"{a} <-> {b} | good: {len(good)} | inliers: {inliers} | score: {score:.3f}")
+        if inlier_mask is None:
+            continue
+
+        inliers = int(inlier_mask.sum())
+        score = inliers / min(len(descriptors_a), len(descriptors_b))
+        logger.debug(
+            "%s <-> %s | good: %d | inliers: %d | score: %.3f",
+            image_name_a,
+            image_name_b,
+            len(good_matches),
+            inliers,
+            score,
+        )
 
         if score >= threshold:
-            results.append((a, b, float(score)))
+            results.append((image_name_a, image_name_b, float(score)))
 
+    logger.info("Local-features candidates found: %d", len(results))
     return results

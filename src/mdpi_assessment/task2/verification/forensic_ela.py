@@ -1,37 +1,37 @@
-"""
-Generated functions to apply simple forensics to selected candidates after running the worflows 
-"""
+from __future__ import annotations
 
 from pathlib import Path
-from PIL import Image, ImageChops
+from typing import Final
+
 import numpy as np
+from PIL import Image, ImageChops
 import io
 
-def ela_image(path, quality=90):
-    
-    img = Image.open(path).convert("RGB")
 
-    # Compress image into memory buffer
+DEFAULT_ELA_QUALITY: Final[int] = 90
+
+
+def compute_ela_image_pil(image_path: Path, quality: int = DEFAULT_ELA_QUALITY) -> Image.Image:
+    img_rgb = Image.open(image_path).convert("RGB")
+
     buffer = io.BytesIO()
-    img.save(buffer, "JPEG", quality=quality)
+    img_rgb.save(buffer, "JPEG", quality=quality)
     buffer.seek(0)
+    compressed_rgb = Image.open(buffer)
 
-    compressed = Image.open(buffer)
-    # ELA residual = difference between original and compressed
-    ela = ImageChops.difference(img, compressed)
-    return ela
+    ela_image = ImageChops.difference(img_rgb, compressed_rgb)
+    return ela_image
 
-def ela_score(path_a, path_b):
-    # Similarity score in [0,1] (higher → more similar)
-    ela_a = ela_image(path_a)
-    ela_b = ela_image(path_b)
 
-    arr_a = np.asarray(ela_a).astype("float32")
-    arr_b = np.asarray(ela_b).astype("float32")
+def ela_similarity_score(image_a_path: Path, image_b_path: Path) -> float:
+    ela_image_a = compute_ela_image_pil(image_a_path)
+    ela_image_b = compute_ela_image_pil(image_b_path)
 
-    var_a = np.var(arr_a)
-    var_b = np.var(arr_b)
+    ela_array_a = np.asarray(ela_image_a, dtype=np.float32)
+    ela_array_b = np.asarray(ela_image_b, dtype=np.float32)
 
-    # Similarity: closer variances → higher score
-    score = 1.0 - abs(var_a - var_b) / max(var_a, var_b, 1e-6)
+    variance_a = float(np.var(ela_array_a))
+    variance_b = float(np.var(ela_array_b))
+
+    score = 1.0 - abs(variance_a - variance_b) / max(variance_a, variance_b, 1e-6)
     return float(score)
