@@ -2,7 +2,7 @@ from pathlib import Path
 import cv2
 import random
 
-from mdpi_assesment.config import RAW_DIR, RESULTS_DIR
+from mdpi_assessment.config import RAW_DIR, RESULTS_DIR
 
 
 def load_image(image_path: Path) -> cv2.Mat:

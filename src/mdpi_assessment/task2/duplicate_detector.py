@@ -1,3 +1,9 @@
+"""
+This component allows choosing a strategy for finding similar images: exact match, phash, local features, embeddings
+Loading all images, runs chosen strategy to find candidates duplicate pairs
+Saving the CSV data with image pairs and a similarity score.
+"""
+
 from pathlib import Path
 import csv
 import importlib
@@ -8,7 +14,7 @@ from typing import Callable
 @dataclass(frozen=True)
 class Strategy:
     """
-    Represents a strategy module with a stable entrypoint function.
+    Module with entrypoint function.
     """
     module: str
     entrypoint: str = "compute_duplicates"
@@ -22,22 +28,22 @@ class Strategy:
                 f"Strategy module '{self.module}' does not define '{self.entrypoint}'"
             )
 
-# Explicit strategy registry with verb-based entrypoints
+# Registry with entrypoints
 STRATEGY_REGISTRY = {
     "find_equal": Strategy(
-        module="mdpi_assesment.task2.strategies.equal",
+        module="mdpi_assessment.task2.strategies.equal",
         entrypoint="find_equal_candidates",
     ),
-    "local_features": Strategy(
-        module="mdpi_assesment.task2.strategies.local_features",
+    "find_local_features": Strategy(
+        module="mdpi_assessment.task2.strategies.local_features",
         entrypoint="find_local_features_candidates",
     ),
     "find_phash": Strategy(
-        module="mdpi_assesment.task2.strategies.phash",
+        module="mdpi_assessment.task2.strategies.phash",
         entrypoint="find_phash_candidates",
     ),
     "find_embedding_nn": Strategy(
-        module="mdpi_assesment.task2.strategies.embedding_nn",
+        module="mdpi_assessment.task2.strategies.embedding_nn",
         entrypoint="find_embedding_nn_candidates",
     ),
 }
