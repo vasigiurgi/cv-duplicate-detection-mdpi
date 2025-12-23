@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from typing import Dict, List
-
-import csv
 
 from mdpi_assessment.logger import logger
 from mdpi_assessment.task2.verification.forensic_ela import ela_similarity_score
@@ -22,7 +21,9 @@ def run_forensics(
         image_b_path = image_directory / candidate["image_b"]
 
         if not image_a_path.exists() or not image_b_path.exists():
-            logger.warning("Skipping missing image(s): %s, %s", image_a_path, image_b_path)
+            logger.warning(
+                "Skipping missing image(s): %s, %s", image_a_path, image_b_path
+            )
             continue
 
         ela_score = ela_similarity_score(image_a_path, image_b_path)
@@ -46,5 +47,7 @@ def run_forensics(
         writer.writeheader()
         writer.writerows(verified_candidates)
 
-    logger.info("ELA verification completed. %d candidates retained.", len(verified_candidates))
+    logger.info(
+        "ELA verification completed. %d candidates retained.", len(verified_candidates)
+    )
     return verified_candidates

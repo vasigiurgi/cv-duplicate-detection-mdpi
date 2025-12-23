@@ -7,7 +7,6 @@ logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.DEBUG)
 
-# format messages
 formatter = logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s")
 ch.setFormatter(formatter)
 

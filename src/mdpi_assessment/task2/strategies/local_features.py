@@ -10,13 +10,13 @@ import numpy as np
 from mdpi_assessment.logger import logger
 
 
+# find duplicate candidates using ORB + BF + RANSAC
 def find_local_features_candidates(
     image_paths: List[Path],
     threshold: float = 0.20,
     min_matches: int = 20,
 ) -> List[Tuple[str, str, float]]:
-    """Find local feature-based duplicate candidates using ORB + BF + RANSAC."""
-    orb = cv2.ORB_create(nfeatures=1000)
+    orb = cv2.ORB_create(nfeatures=1000)  # type: ignore[attr-defined]
     bf_matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
     keypoints_by_name: Dict[str, List[cv2.KeyPoint]] = {}
@@ -47,8 +47,8 @@ def find_local_features_candidates(
         if len(good_matches) < min_matches:
             continue
 
-        points_a = np.float32([keypoints_a[m.queryIdx].pt for m in good_matches])
-        points_b = np.float32([keypoints_b[m.trainIdx].pt for m in good_matches])
+        points_a = np.array([keypoints_a[m.queryIdx].pt for m in good_matches], dtype=np.float32)
+        points_b = np.array([keypoints_b[m.trainIdx].pt for m in good_matches], dtype=np.float32)
         homography_matrix, inlier_mask = cv2.findHomography(points_a, points_b, cv2.RANSAC, 5.0)
 
         if inlier_mask is None:

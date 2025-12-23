@@ -5,12 +5,12 @@ from typing import Dict
 import numpy as np
 
 from .metrics import (
-    ela_uniformity,
+    ela_edge_alignment,
     ela_energy_ratio,
     ela_spatial_clustering,
-    ela_edge_alignment,
-    quantization_table_score,
+    ela_uniformity,
     noise_channel_imbalance,
+    quantization_table_score,
 )
 
 

@@ -4,8 +4,8 @@ from itertools import combinations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from PIL import Image
 import imagehash
+from PIL import Image
 
 from mdpi_assessment.logger import logger
 
@@ -14,12 +14,7 @@ def find_phash_candidates(
     image_paths: List[Path],
     threshold: int = 10,
 ) -> List[Tuple[str, str, float]]:
-    """
-    Detect near-duplicate images using perceptual hashing (pHash).
-
-    threshold is the maximum Hamming distance allowed to consider
-    two images as duplicates.
-    """
+    ## near-duplicate images using perceptual hashing and Hamming distance
     if not image_paths:
         logger.warning("No images provided for pHash comparison.")
         return []

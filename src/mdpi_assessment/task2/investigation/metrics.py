@@ -5,7 +5,8 @@ from typing import Dict
 import cv2
 import numpy as np
 
-from mdpi_assessment.task1.process_image import to_grayscale, gaussian_blur
+from mdpi_assessment.task1.process_image import gaussian_blur, to_grayscale
+
 from .core import ela_to_grayscale
 
 
@@ -57,3 +58,4 @@ def noise_channel_imbalance(original_bgr: np.ndarray) -> float:
     residual = original_bgr.astype(np.float32) - blurred_bgr.astype(np.float32)
     channel_stds = [np.std(residual[:, :, channel_index]) for channel_index in range(3)]
     return float(max(channel_stds) / (min(channel_stds) + 1e-6))
+

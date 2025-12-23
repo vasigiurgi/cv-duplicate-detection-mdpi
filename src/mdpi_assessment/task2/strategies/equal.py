@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 from itertools import combinations
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
-
-import hashlib
 
 from mdpi_assessment.logger import logger
 
@@ -16,15 +15,10 @@ def file_hash(file_path: Path, algorithm: str = "md5") -> str:
             hasher.update(chunk)
     return hasher.hexdigest()
 
-
+# find exact duplicates using file hashes
 def find_equal_candidates(
     src: Union[Path, List[Path]],
 ) -> List[Tuple[str, str, float]]:
-    """
-    Detect exact duplicates using file hashes.
-
-    Returns a list of (image_a_name, image_b_name, score=1.0).
-    """
     if isinstance(src, Path):
         if not src.exists() or not src.is_dir():
             raise ValueError(f"Directory does not exist: {src}")

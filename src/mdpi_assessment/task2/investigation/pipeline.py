@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from typing import Dict, List
 
-import csv
 import cv2
 
 from mdpi_assessment.config import RAW_DIR
@@ -12,18 +12,20 @@ from mdpi_assessment.task2.aggregation.candidate_collector import collect_candid
 
 from .core import compute_ela_image, jpeg_quantization_tables
 from .metrics import (
-    ela_uniformity,
-    ela_energy_ratio,
-    ela_spatial_clustering,
     ela_edge_alignment,
+    ela_energy_ratio,
     ela_hotspot_mask,
-    quantization_table_score,
+    ela_spatial_clustering,
+    ela_uniformity,
     noise_channel_imbalance,
+    quantization_table_score,
 )
 from .scoring import final_forensic_score
-from .viz import save_visualization, save_composite_forensic_figure_cv
+from .viz import save_composite_forensic_figure_cv, save_visualization
 
-# number of votes from different strategy, 1 -> allows all, 2 -> at least two strategies have to agree
+
+# number of votes from different strategy,
+# 1 -> allows all to vote, 2 -> at least two strategies have to agree
 def run_ela_investigation(
     results_directory: Path,
     strategy_csv_paths: Dict[str, Path],
@@ -33,7 +35,10 @@ def run_ela_investigation(
     image_directory = image_directory or RAW_DIR
 
     candidates = collect_candidates(
-        [(csv_path, strategy_name) for strategy_name, csv_path in strategy_csv_paths.items()],
+        [
+            (csv_path, strategy_name)
+            for strategy_name, csv_path in strategy_csv_paths.items()
+        ],
         min_votes=min_votes,
     )
 
@@ -59,10 +64,16 @@ def run_ela_investigation(
         quant_tables_a = jpeg_quantization_tables(image_a_path)
         quant_tables_b = jpeg_quantization_tables(image_b_path)
 
-        forensic_score_a = final_forensic_score(ela_image_a_rgb, original_image_a_bgr, quant_tables_a)
-        forensic_score_b = final_forensic_score(ela_image_b_rgb, original_image_b_bgr, quant_tables_b)
+        forensic_score_a = final_forensic_score(
+            ela_image_a_rgb, original_image_a_bgr, quant_tables_a
+        )
+        forensic_score_b = final_forensic_score(
+            ela_image_b_rgb, original_image_b_bgr, quant_tables_b
+        )
 
-        edited_image_label = "image_b" if forensic_score_b > forensic_score_a else "image_a"
+        edited_image_label = (
+            "image_b" if forensic_score_b > forensic_score_a else "image_a"
+        )
 
         hotspot_mask_a = ela_hotspot_mask(ela_image_a_rgb, top_percent=5.0)
         hotspot_mask_b = ela_hotspot_mask(ela_image_b_rgb, top_percent=5.0)
@@ -115,7 +126,9 @@ def run_ela_investigation(
         logger.warning("No ELA investigation results produced.")
         return []
 
-    filtered_results = [result for result in investigation_results if int(result["votes"]) >= min_votes]
+    filtered_results = [
+        result for result in investigation_results if int(result["votes"]) >= min_votes
+    ]
     if not filtered_results:
         filtered_results = investigation_results
 

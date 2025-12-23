@@ -1,15 +1,15 @@
-from pathlib import Path
-from collections import defaultdict
 import csv
-from typing import List, Tuple, Dict
+from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 from mdpi_assessment.logger import logger
 
+
 def collect_candidates(
-    csv_files: List[Tuple[Path, str]], 
+    csv_files: List[Tuple[Path, str]],
     min_votes: int = 2
 ) -> List[Dict[str, str]]:
-    # aggregate candidates from multiple strategies with vote threshold
-    
     votes: defaultdict = defaultdict(lambda: {"count": 0, "sources": [], "scores": []})
 
     for csv_path, strategy in csv_files:

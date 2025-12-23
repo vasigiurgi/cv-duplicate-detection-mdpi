@@ -1,10 +1,10 @@
-from pathlib import Path
-from typing import List, Tuple
 import csv
 import importlib
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, List, Tuple
+
 from mdpi_assessment.logger import logger
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,6 @@ class Strategy:
     csv_name: str
 
     def load(self) -> Callable:
-
         module = importlib.import_module(self.module)
         try:
             return getattr(module, self.entrypoint)
@@ -22,6 +21,7 @@ class Strategy:
             raise AttributeError(
                 f"Strategy module '{self.module}' does not define '{self.entrypoint}'"
             ) from exc
+
 
 STRATEGY_REGISTRY = {
     "find_equal": Strategy(
@@ -47,9 +47,7 @@ STRATEGY_REGISTRY = {
 }
 
 
-
 def run_task2(src: Path, out: Path, strategy: str) -> None:
-    # run a single duplicate detection strategy and save candidates to CSV"""
     logger.info("=== Task 2 invoked ===")
     logger.info(f"Source directory: {src}, Output file: {out}, Strategy: {strategy}")
 
@@ -59,7 +57,6 @@ def run_task2(src: Path, out: Path, strategy: str) -> None:
     strategy_fn = STRATEGY_REGISTRY[strategy].load()
     results: List[Tuple[str, str, float]] = strategy_fn(list(src.iterdir()))
 
-    # Save results to CSV
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as f:
         writer = csv.writer(f)

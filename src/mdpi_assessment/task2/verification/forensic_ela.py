@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import Final
 
 import numpy as np
 from PIL import Image, ImageChops
-import io
-
 
 DEFAULT_ELA_QUALITY: Final[int] = 90
 
 
-def compute_ela_image_pil(image_path: Path, quality: int = DEFAULT_ELA_QUALITY) -> Image.Image:
+def compute_ela_image_pil(
+    image_path: Path, quality: int = DEFAULT_ELA_QUALITY
+) -> Image.Image:
     img_rgb = Image.open(image_path).convert("RGB")
 
     buffer = io.BytesIO()
