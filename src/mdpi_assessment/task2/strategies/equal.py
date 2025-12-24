@@ -15,7 +15,6 @@ def file_hash(file_path: Path, algorithm: str = "md5") -> str:
             hasher.update(chunk)
     return hasher.hexdigest()
 
-# find exact duplicates using file hashes
 def find_equal_candidates(
     src: Union[Path, List[Path]],
 ) -> List[Tuple[str, str, float]]:

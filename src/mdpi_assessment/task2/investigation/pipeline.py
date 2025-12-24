@@ -24,13 +24,30 @@ from .scoring import final_forensic_score
 from .viz import save_composite_forensic_figure_cv, save_visualization
 
 
-# number of votes from different strategy,
-# 1 -> allows all to vote, 2 -> at least two strategies have to agree
+def _score_pair_balanced_suspicion(result: Dict) -> float:
+    a = float(result["forensic_score_a"])
+    b = float(result["forensic_score_b"])
+    distance = abs(a - b)
+    min_score = min(a, b)
+    alpha = 0.01
+    return distance - alpha * min_score
+
+
+def _score_pair_edit_asymmetry(result: Dict) -> float:
+    a = float(result["forensic_score_a"])
+    b = float(result["forensic_score_b"])
+    diff = abs(a - b)
+    max_score = max(a, b)
+    beta = 0.01
+    return diff + beta * max_score
+
+
 def run_ela_investigation(
     results_directory: Path,
     strategy_csv_paths: Dict[str, Path],
     image_directory: Path | None = None,
     min_votes: int = 2,
+    selection_mode: str = "balanced",
 ) -> List[Dict]:
     image_directory = image_directory or RAW_DIR
 
@@ -132,13 +149,10 @@ def run_ela_investigation(
     if not filtered_results:
         filtered_results = investigation_results
 
-    best_pair = max(
-        filtered_results,
-        key=lambda result: min(
-            float(result["forensic_score_a"]),
-            float(result["forensic_score_b"]),
-        ),
-    )
+    if selection_mode == "asymmetry":
+        best_pair = max(filtered_results, key=_score_pair_edit_asymmetry)
+    else:
+        best_pair = min(filtered_results, key=_score_pair_balanced_suspicion)
 
     composite_path = (
         visualization_directory

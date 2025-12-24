@@ -13,8 +13,8 @@ from mdpi_assessment.logger import logger
 # find duplicate candidates using ORB + BF + RANSAC
 def find_local_features_candidates(
     image_paths: List[Path],
-    threshold: float = 0.20,
-    min_matches: int = 20,
+    threshold: float = 0.15,
+    min_matches: int = 15,
 ) -> List[Tuple[str, str, float]]:
     orb = cv2.ORB_create(nfeatures=1000)  # type: ignore[attr-defined]
     bf_matcher = cv2.BFMatcher(cv2.NORM_HAMMING)

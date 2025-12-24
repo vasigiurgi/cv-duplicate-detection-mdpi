@@ -7,6 +7,7 @@ from mdpi_assessment.config import RAW_DIR
 from mdpi_assessment.logger import logger
 from mdpi_assessment.task2.aggregation.candidate_collector import collect_candidates
 from mdpi_assessment.task2.duplicate_detector import STRATEGY_REGISTRY, run_task2
+from mdpi_assessment.task2.investigation.pipeline import run_ela_investigation
 from mdpi_assessment.task2.verification.run_forensics import run_forensics
 
 
@@ -22,6 +23,8 @@ def run_full_workflow(
     results_dir: Path,
     min_votes: int = 2,
     ela_threshold: float = 0.85,
+    run_investigation: bool = False,
+    selection_mode: str = "balanced",
 ) -> List[Dict]:
     results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -48,6 +51,17 @@ def run_full_workflow(
         ela_threshold=ela_threshold,
     )
 
+    if run_investigation and final_results:
+        logger.info("[Step 4] Running detailed ELA investigation...")
+        strategy_csvs = build_strategy_csvs(results_dir)
+        run_ela_investigation(
+            results_directory=results_dir,
+            strategy_csv_paths=strategy_csvs,
+            image_directory=src,
+            min_votes=min_votes,
+            selection_mode=selection_mode,
+        )
+
     logger.info("Workflow finished. Final forensic candidates: %d", len(final_results))
     logger.info("Results saved to: %s", forensic_output_csv)
     return final_results
@@ -59,6 +73,8 @@ def run_workflow_from_csvs(
     image_dir: Path | None = None,
     min_votes: int = 2,
     ela_threshold: float = 0.85,
+    run_investigation: bool = False,
+    selection_mode: str = "balanced",
 ) -> List[Dict]:
     results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -81,6 +97,16 @@ def run_workflow_from_csvs(
         output_csv_path=forensic_output_csv,
         ela_threshold=ela_threshold,
     )
+
+    if run_investigation and final_results:
+        logger.info("Running detailed ELA investigation from existing CSVs...")
+        run_ela_investigation(
+            results_directory=results_dir,
+            strategy_csv_paths=strategy_csvs,
+            image_directory=image_dir,
+            min_votes=min_votes,
+            selection_mode=selection_mode,
+        )
 
     logger.info("Workflow completed. Final forensic candidates: %d", len(final_results))
     logger.info("Results written to: %s", forensic_output_csv)

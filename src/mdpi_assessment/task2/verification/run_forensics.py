@@ -17,8 +17,11 @@ def run_forensics(
     verified_candidates: List[Dict] = []
 
     for candidate in candidates:
-        image_a_path = image_directory / candidate["image_a"]
-        image_b_path = image_directory / candidate["image_b"]
+        image_a_name = candidate["image_a"]
+        image_b_name = candidate["image_b"]
+
+        image_a_path = image_directory / image_a_name
+        image_b_path = image_directory / image_b_name
 
         if not image_a_path.exists() or not image_b_path.exists():
             logger.warning(
@@ -29,7 +32,12 @@ def run_forensics(
         ela_score = ela_similarity_score(image_a_path, image_b_path)
 
         if ela_score >= ela_threshold:
-            verified_candidates.append({**candidate, "ela_score": ela_score})
+            verified_candidates.append(
+                {
+                    **candidate,
+                    "ela_score": ela_score,
+                }
+            )
 
     output_csv_path.parent.mkdir(parents=True, exist_ok=True)
     with output_csv_path.open("w", newline="") as csv_file:

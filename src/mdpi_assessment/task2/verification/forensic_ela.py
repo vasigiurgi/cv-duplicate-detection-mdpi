@@ -11,7 +11,8 @@ DEFAULT_ELA_QUALITY: Final[int] = 90
 
 
 def compute_ela_image_pil(
-    image_path: Path, quality: int = DEFAULT_ELA_QUALITY
+    image_path: Path,
+    quality: int = DEFAULT_ELA_QUALITY,
 ) -> Image.Image:
     img_rgb = Image.open(image_path).convert("RGB")
 

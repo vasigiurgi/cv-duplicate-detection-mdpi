@@ -14,7 +14,7 @@ def find_phash_candidates(
     image_paths: List[Path],
     threshold: int = 10,
 ) -> List[Tuple[str, str, float]]:
-    ## near-duplicate images using perceptual hashing and Hamming distance
+    # near-duplicate images using perceptual hashing and Hamming distance
     if not image_paths:
         logger.warning("No images provided for pHash comparison.")
         return []

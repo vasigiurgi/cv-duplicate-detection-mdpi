@@ -44,6 +44,11 @@ STRATEGY_REGISTRY = {
         entrypoint="find_embedding_nn_candidates",
         csv_name="task2_embedding_nn.csv",
     ),
+    "find_embedding_nn_faiss": Strategy(
+        module="mdpi_assessment.task2.strategies.embedding_nn_faiss",
+        entrypoint="find_embedding_nn_candidates",
+        csv_name="task2_embedding_nn_faiss.csv",
+    ),
 }
 
 

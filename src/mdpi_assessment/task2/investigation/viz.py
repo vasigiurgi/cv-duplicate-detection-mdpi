@@ -48,66 +48,48 @@ def save_composite_forensic_figure_cv(
     original_image_a_bgr = cv2.imread(str(image_a_path))
     if original_image_a_bgr is None:
         raise FileNotFoundError(f"Could not read image: {image_a_path}")
+
     original_image_b_bgr = cv2.imread(str(image_b_path))
     if original_image_b_bgr is None:
         raise FileNotFoundError(f"Could not read image: {image_b_path}")
 
-    ela_a_gray = ela_to_grayscale(ela_image_a_rgb).astype(np.float32)
-    ela_b_gray = ela_to_grayscale(ela_image_b_rgb).astype(np.float32)
+    def _build_panel(
+        original_bgr: np.ndarray,
+        ela_rgb: np.ndarray,
+        hotspot_mask: np.ndarray,
+    ) -> np.ndarray:
+        ela_gray = ela_to_grayscale(ela_rgb).astype(np.float32)
+        ela_gray_norm = cv2.normalize(ela_gray, ela_gray, 0.0, 255.0, cv2.NORM_MINMAX)
+        ela_uint8 = ela_gray_norm.astype(np.uint8)
+        ela_bgr = cv2.cvtColor(ela_uint8, cv2.COLOR_GRAY2BGR)
 
-    ela_a_gray_norm = cv2.normalize(ela_a_gray, ela_a_gray, 0.0, 255.0, cv2.NORM_MINMAX)
-    ela_b_gray_norm = cv2.normalize(ela_b_gray, ela_b_gray, 0.0, 255.0, cv2.NORM_MINMAX)
+        hotspot_overlay_bgr = original_bgr.copy()
+        hotspot_overlay_bgr[hotspot_mask] = [0, 0, 255]
 
-    ela_a_uint8 = ela_a_gray_norm.astype(np.uint8)
-    ela_b_uint8 = ela_b_gray_norm.astype(np.uint8)
+        edges_gray = cv2.Canny(to_grayscale(original_bgr), 100, 200)
+        edge_overlay_bgr = cv2.addWeighted(
+            original_bgr,
+            0.7,
+            cv2.cvtColor(edges_gray, cv2.COLOR_GRAY2BGR),
+            0.3,
+            0.0,
+        )
 
-    ela_a_bgr = cv2.cvtColor(ela_a_uint8, cv2.COLOR_GRAY2BGR)
-    ela_b_bgr = cv2.cvtColor(ela_b_uint8, cv2.COLOR_GRAY2BGR)
+        noise_residual_bgr = visualize_noise_residual(original_bgr)
 
-    hotspot_a_bgr = original_image_a_bgr.copy()
-    hotspot_a_bgr[hotspot_mask_a] = [0, 0, 255]
-    hotspot_b_bgr = original_image_b_bgr.copy()
-    hotspot_b_bgr[hotspot_mask_b] = [0, 0, 255]
+        panel = np.vstack(
+            [
+                original_bgr,
+                ela_bgr,
+                hotspot_overlay_bgr,
+                edge_overlay_bgr,
+                noise_residual_bgr,
+            ]
+        )
+        return panel
 
-    edges_a = cv2.Canny(to_grayscale(original_image_a_bgr), 100, 200)
-    edge_overlay_a_bgr = cv2.addWeighted(
-        original_image_a_bgr,
-        0.7,
-        cv2.cvtColor(edges_a, cv2.COLOR_GRAY2BGR),
-        0.3,
-        0.0,
-    )
-
-    edges_b = cv2.Canny(to_grayscale(original_image_b_bgr), 100, 200)
-    edge_overlay_b_bgr = cv2.addWeighted(
-        original_image_b_bgr,
-        0.7,
-        cv2.cvtColor(edges_b, cv2.COLOR_GRAY2BGR),
-        0.3,
-        0.0,
-    )
-
-    noise_residual_a_bgr = visualize_noise_residual(original_image_a_bgr)
-    noise_residual_b_bgr = visualize_noise_residual(original_image_b_bgr)
-
-    column_a = np.vstack(
-        [
-            original_image_a_bgr,
-            ela_a_bgr,
-            hotspot_a_bgr,
-            edge_overlay_a_bgr,
-            noise_residual_a_bgr,
-        ]
-    )
-    column_b = np.vstack(
-        [
-            original_image_b_bgr,
-            ela_b_bgr,
-            hotspot_b_bgr,
-            edge_overlay_b_bgr,
-            noise_residual_b_bgr,
-        ]
-    )
+    column_a = _build_panel(original_image_a_bgr, ela_image_a_rgb, hotspot_mask_a)
+    column_b = _build_panel(original_image_b_bgr, ela_image_b_rgb, hotspot_mask_b)
 
     composite = np.hstack([column_a, column_b])
     output_path.parent.mkdir(parents=True, exist_ok=True)

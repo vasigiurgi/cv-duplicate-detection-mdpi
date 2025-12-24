@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict
@@ -5,8 +6,15 @@ from typing import Any, Dict
 import numpy as np
 from PIL import Image, ImageChops, ImageEnhance
 
+ELA_DEFAULT_QUALITY = 95
+ELA_DEFAULT_RESCALE = 20
 
-def compute_ela_image(image_path: Path, quality: int = 95, rescale: int = 10) -> np.ndarray:
+
+def compute_ela_image(
+    image_path: Path,
+    quality: int = ELA_DEFAULT_QUALITY,
+    rescale: int = ELA_DEFAULT_RESCALE,
+) -> np.ndarray:
     original_image = Image.open(image_path).convert("RGB")
     temporary_path = image_path.with_suffix(".ela_tmp.jpg")
 
@@ -19,7 +27,11 @@ def compute_ela_image(image_path: Path, quality: int = 95, rescale: int = 10) ->
     if isinstance(extrema, tuple) and extrema and isinstance(extrema[0], tuple):
         highs = [float(high) for (_low, high) in extrema]  # type: ignore[misc]
         max_difference = max(highs) if highs else 0.0
-    elif isinstance(extrema, tuple) and len(extrema) == 2 and isinstance(extrema[1], (int, float)):
+    elif (
+        isinstance(extrema, tuple)
+        and len(extrema) == 2
+        and isinstance(extrema[1], (int, float))
+    ):
         max_difference = float(extrema[1])  # type: ignore[misc]
     else:
         max_difference = 0.0

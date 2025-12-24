@@ -19,6 +19,7 @@ dependencies = [
     "imagehash>=4.3.2",
     "scikit-learn>=1.8.0",
     "ruff>=0.14.10",
+    "faiss-cpu>=1.8.0",
 ]
 
 [project.scripts]
