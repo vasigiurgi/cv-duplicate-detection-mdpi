@@ -8,8 +8,6 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.preprocessing import image as keras_image
 
-from mdpi_assessment.logger import logger  # [conversation_history:8]
-
 if TYPE_CHECKING:
     from tensorflow.keras.models import Model
 
@@ -31,14 +29,18 @@ def _load_and_preprocess(
     image_path: Path,
     target_size: tuple[int, int] = (224, 224),
 ) -> np.ndarray:
-    img = keras_image.load_img(str(image_path), target_size=target_size)
-    array = keras_image.img_to_array(img)
+    image = keras_image.load_img(str(image_path), target_size=target_size)
+    array = keras_image.img_to_array(image)
     batch = np.expand_dims(array, axis=0)
     return preprocess_input(batch)
 
 
 def _filter_image_paths(paths: Iterable[Path]) -> List[Path]:
-    return [path for path in paths if path.suffix.lower() in {".jpg", ".jpeg", ".png"}]
+    return [
+        path
+        for path in paths
+        if path.suffix.lower() in {".jpg", ".jpeg", ".png"}
+    ]
 
 
 def _compute_embeddings(
@@ -54,7 +56,7 @@ def _compute_embeddings(
             embeddings[path] = model.predict(batch, verbose=0)
         except Exception as exc:
             if debug:
-                logger.warning("Failed to process %s: %s", path, exc)
+                print(f"Failed to process {path}: {exc}")
 
     return embeddings
 
@@ -66,7 +68,9 @@ def _find_similar_pairs(
 ) -> List[Tuple[str, str, float]]:
     results: List[Tuple[str, str, float]] = []
 
-    for (path_a, emb_a), (path_b, emb_b) in combinations(embeddings.items(), 2):
+    for (path_a, emb_a), (path_b, emb_b) in combinations(
+        embeddings.items(), 2
+    ):
         try:
             similarity = float(cosine_similarity(emb_a, emb_b)[0, 0])
             if similarity >= threshold:
@@ -74,10 +78,7 @@ def _find_similar_pairs(
                 results.append((name_a, name_b, similarity))
         except Exception as exc:
             if debug:
-                logger.warning("Error comparing %s and %s: %s", path_a, path_b, exc)
-
-    if debug:
-        logger.info("Embedding NN candidate pairs above threshold: %d", len(results))
+                print(f"Error comparing {path_a} and {path_b}: {exc}")
 
     return results
 
@@ -90,13 +91,18 @@ def find_embedding_nn_candidates(
     filtered = _filter_image_paths(image_paths)
     if len(filtered) < 2:
         if debug:
-            logger.info("Not enough images for embedding comparison.")
+            print("Not enough images for embedding comparison.")
         return []
 
     embeddings = _compute_embeddings(filtered, debug)
     if len(embeddings) < 2:
         if debug:
-            logger.info("Not enough valid embeddings computed.")
+            print("Not enough valid embeddings computed.")
         return []
 
-    return _find_similar_pairs(embeddings, threshold, debug)
+    results = _find_similar_pairs(embeddings, threshold, debug)
+
+    if debug:
+        print(f"Total embedding NN candidate pairs: {len(results)}")
+
+    return results
