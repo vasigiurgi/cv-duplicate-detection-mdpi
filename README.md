@@ -1,7 +1,8 @@
-# cv-duplicate-detection-mdpi
+# Assessment Project - `cv-duplicate-detection-mdpi`
+---
 
 ## 1. Introduction
-This repository implements a solution to **detect and analyze near-duplicate images** using a mix of computer vision, deep embeddings and forensic analysis. It targets a dataset with one or more near-duplicates images.
+This repository implements a solution to **detect and analyze near-duplicate images** using a mix of computer vision, deep embeddings and forensic analysis. It applies to a dataset where at least one near-duplicates image occurs.
 
 Table of Contents:
 - [1. Dependencies and installation](#1-dependencies-and-installation)
@@ -15,7 +16,8 @@ Table of Contents:
   - [5.4 Aggregate from existing CSVs](#54-aggregate-from-existing-csvs)
   - [5.6 ELA‑Based Forensic Investigation](#56-ela-based-forensic-investigation)
 - [6 Results and interpretation](#6-results-and-interpretation)
-
+  
+---
 
 ## 1. Dependencies and installation
 
@@ -40,14 +42,17 @@ uv run pip install -e .
 ```
 
 This installs everything from `pyproject.toml` / `uv.lock` and makes the `mdpi_assessment` command-line interface.
+To follow up, activate environment with `source .venv/bin/activate` and visualise commands through `mdpi_assessment --help`.
+
+---
 
 ## 2. Project layout
 
 - `src/mdpi_assessment/task1/`  
-  Basic OpenCV image processing (load → grayscale → Gaussian blur). 
+  Basic open-cv image processing (load,  grayscale,  Gaussian blur). 
 
 - `src/mdpi_assessment/task2/strategies/`  
-  Duplicate-detection strategies:
+  Duplicate-detection strategies to find similar candidates:
   - `equal.py` – exact file hashing (MD5).
   - `phash.py` – perceptual hashing (pHash).
   - `local_features.py` – ORB keypoints + BF matcher + RANSAC homography.
@@ -58,17 +63,18 @@ This installs everything from `pyproject.toml` / `uv.lock` and makes the `mdpi_a
   Voting and aggregation over per-strategy candidate CSVs. 
 
 - `src/mdpi_assessment/task2/verification/`  
-  Lightweight ELA-based verification (single scalar ELA score per pair).
+  Lightweight error level analysis (ELA-based) verification (single scalar ELA score per pair).
 
 - `src/mdpi_assessment/task2/investigation/`  
   Extended ELA + JPEG + noise forensics and composite visualizations.
 
 - `data/raw/`  
-  Input images from the dataset
+  Input images from the dataset.
 
 - `data/results/`  
   CSV outputs and forensic visualizations.
   
+---
 
 ## 3. Quick Start
 
@@ -105,7 +111,7 @@ mdpi_assessment task2_aggregate_from_scratch
 After running:
 
 - Check `data/results/task2_forensics_from_scratch.csv` for ELA-verified candidate pairs. 
-- Check `data/results/task2_ela_forensics.csv` and `data/results/ela_forensics/` for detailed forensic metrics and visualizations.
+- Check `data/results/ela_forensics/` and `data/results/task2_ela_forensics.csv` for detailed forensic metrics and visualizations.
 
 ---
 
@@ -123,12 +129,13 @@ mdpi_assessment task1 --random
 - `<name>_gray.png`
 - `<name>_blurred_with_gaussian.png` 
 
-The CLI prints the saved paths for convenience. 
+The CLI logs the saved paths for convenience. 
 
+---
 
 ## 5. Task 2 – Duplicate Detection
 
-Task 2 detects near-duplicate images using multiple strategies, aggregates their votes, and optionally applies forensic checks. Exactly one true duplicate pair is expected; other pairs are interesting for manual review.
+Task 2 detects near-duplicate images using multiple strategies, aggregates their votes, and optionally applies forensic checks. Exactly one true duplicate pair is expected; other pairs are interesting for manual review (human in the loop).
 
 ### 5.1 Methods
 
@@ -136,14 +143,13 @@ Task 2 detects near-duplicate images using multiple strategies, aggregates their
 - **Perceptual similarity** – pHash on downsampled intensity (`find_phash`).
 - **Local geometric consistency** – ORB keypoints, BF matching, RANSAC homography (`find_local_features`). 
 - **Global semantics** – MobileNetV2 embeddings (ImageNet) + cosine similarity (`find_embedding_nn`).
-- **Forensic verification** – ELA intensity statistics, JPEG quantization tables, and RGB noise residuals. 
-
+- **Forensic verification** – ELA intensity statistics, JPEG quantization tables, and RGB noise residuals.
 
 ### 5.2 Run a single strategy
 
 Each command runs one strategy on all images in `data/raw` and writes a CSV to `data/results/`.
 
-Perceptual hash (pHash):
+Perceptual hash (`pHash`):
 
 ```
 mdpi_assessment task2_find_similarity
@@ -152,7 +158,7 @@ mdpi_assessment task2_find_similarity
 --strategy find_phash
 ```
 
-Dummy check, if duplicates such as equal images exist:
+Duplicate check, such as identical images (`equal`):
 
 ```
 mdpi_assessment task2_find_similarity
@@ -161,7 +167,7 @@ mdpi_assessment task2_find_similarity
 --strategy find_equal
 ```
 
-Deep embeddings (MobileNetV2 + cosine similarity):
+Deep embeddings based on MobileNetV2 + cosine similarity (`find_embedding_nn`):
 
 ```
 mdpi_assessment task2_find_similarity
@@ -170,7 +176,7 @@ mdpi_assessment task2_find_similarity
 --strategy find_embedding_nn
 ```
 
-FAISS:
+Deep embeddings based on ResNet50 + FAISS and normalized inner-product search (`find_embedding_nn_faiss`):
 
 ```
 mdpi_assessment task2_find_similarity
@@ -180,7 +186,7 @@ mdpi_assessment task2_find_similarity
 ```
 
 
-Local features (ORB + RANSAC):
+Local features based on ORB + BF + RANSAC (`find_local_features`):
 
 ```
 mdpi_assessment task2_find_similarity
@@ -197,17 +203,16 @@ Arguments:
 
 Each CSV has:
 ```
-image_a,image_b,score
+image_a, image_b, score
 ```
 
-where `score` is strategy-dependent (hash similarity, inlier ratio, cosine similarity, etc.). 
-
+where `score` is strategy-dependent (hash similarity, inlier ratio, cosine similarity, faiss, etc.). 
 
 ### 5.3 Full workflow from raw images
 
 Runs all strategies, aggregates candidate pairs, and performs ELA verification in a single command. 
 
-**Without detailed investigation**
+**Without detailed investigation (ELA)**
 
 ```
 mdpi_assessment task2_aggregate_from_scratch
@@ -219,7 +224,9 @@ mdpi_assessment task2_aggregate_from_scratch
 
 - Step 1: run all configured strategies, writing their per-strategy CSVs into `data/results/`. 
 - Step 2: aggregate candidate pairs using a voting rule (`min-votes` = minimum number of strategies that must agree).
-- Step 3: run lightweight ELA-based verification and write `task2_forensics_from_scratch.csv`. 
+- Step 3: run lightweight ELA-based verification and write best obtained candidates `task2_forensics_from_scratch.csv`.
+
+   
 
 **With detailed ELA investigation and selection mode**
 
@@ -236,15 +243,14 @@ mdpi_assessment task2_aggregate_from_scratch
 
 - `--run-investigation`: after verification, run full ELA + JPEG + noise analysis for all candidate pairs.
 - `--selection-mode`:
-  - `balanced`: prefer pairs where both images are similarly suspicious and scores are close. 
+  - `balanced`: prefer pairs where both images are similarly suspicious and their composed scores are close. 
   - `asymmetry`: prefer pairs with a strong forensic gap, where one image is clearly more suspicious than the other. 
 
 Investigation produces:
 
 - `data/results/task2_ela_forensics.csv` – detailed forensic metrics and scores per candidate pair. 
 - `data/results/ela_forensics/best_pair_*.png` – composite panel for the best pair according to the selected mode.
-
----
+  
 
 ### 5.4 Aggregate from existing CSVs
 
@@ -261,7 +267,8 @@ mdpi_assessment task2_aggregate_csvs
 
 - Reads per-strategy CSVs from `data/results/` (one per strategy).
 - Aggregates candidate pairs with the same `min-votes` rule. 
-- Runs ELA-based verification and writes `task2_forensics_from_existing_data.csv`. 
+- Runs ELA-based verification and writes `task2_forensics_from_existing_data.csv`.
+  
 
 **With detailed investigation and selection mode**
 
@@ -279,14 +286,13 @@ Where:
 
 - `--image-dir`: directory with source images (defaults to `data/raw` if omitted).
 - `--run-investigation`: run the same detailed ELA pipeline as above on the aggregated candidates. 
-- `--selection-mode`: choose between `balanced` and `asymmetry` strategies for picking the “best” forensic pair to visualize.
+- `--selection-mode`: choose between `balanced` and `asymmetry` strategies for picking the "best" forensic pair to visualize.
 
 Outputs:
 
 - `data/results/task2_forensics_from_existing_data.csv` – ELA-verification results from existing candidate CSVs. 
-- `data/results/task2_ela_forensics.csv` and `data/results/ela_forensics/` – created if `--run-investigation` is set. 
-
----
+- `data/results/task2_ela_forensics.csv` and `data/results/ela_forensics/` – created if `--run-investigation` is set.
+  
 
 ### 5.6 ELA‑Based Forensic Investigation
 
@@ -308,18 +314,42 @@ This:
 - Writes:
   - `data/results/task2_ela_forensics.csv` – metrics and scores per candidate pair. 
   - `data/results/ela_forensics/` – per-image ELA visualizations and a composite figure for the best pair chosen by `selection-mode`.
-  
+    
+---
+
 ## 6 Results and interpretation
 
-The figures below show two example pairs selected by the ELA investigation:
+The figures below show two example pairs selected after running the presented strategies and ELA investigation.  
+Each panel is a vertical stack of views for a **left** image and a **right** image:
 
+- Row 1: original RGB images (left vs right).
+- Row 2: ELA maps (bright, noisy regions indicate stronger compression or editing traces).
+- Row 3: JPEG-related view (recompressed / quantization artefacts).
+- Row 4: RGB noise residuals (image minus a smoothed version).
+- Row 5: edge / high-frequency residuals.
 
-Best pair 1 (asymmetry): One image shows stronger ELA artifacts and noisier residuals than its partner. This matches the “asymmetry” mode: one frame is flagged as clearly more suspicious than the other, which is closer to a “source vs. manipulated” scenario.
+### Pair semantics
 
-![Best pair 1](doc/best_pair_image_153.jpg_image_489.jpg)
+- **Best pair 1 (asymmetry)**  
+  The left image shows stronger ELA responses and noisier residuals than the right one in multiple rows.  
+  This is what the **asymmetry** mode is looking for: one frame clearly stands out as more suspicious, closer to a “clean vs manipulated” situation.
 
-Best pair 1 (balanced): Both images show similar forensic responses. Their ELA maps, JPEG traces, and noise residuals are all consistently high, which fits the “balanced” idea: the model sees both frames as similarly suspicious, suggesting a globally edited pair rather than a single localized tamper.
-![Best pair 2](doc/best_pair_image_220.jpg_image_601.jpg)
+- **Best pair 2 (balanced)**  
+  Here both images react in a similar way in all forensic views.  
+  Their scores are close, so the model treats them as equally suspicious, more like a globally edited pair than a single local tamper.
 
+<table>
+  <tr>
+    <td align="center">
+      <b>Best pair 1 (asymmetry)</b><br><br>
+      <img src="doc/best_pair_image_153.jpg_image_489.jpg.png" width="350">
+    </td>
+    <td align="center">
+      <b>Best pair 2 (balanced)</b><br><br>
+      <img src="doc/best_pair_image_220.jpg_image_601.jpg.png" width="350">
+    </td>
+  </tr>
+</table>
 
+The results shown here are only one possible interpretation of the outputs, based on my own reading of the scores and developments. Initially, many images were flagged as suspicious by different methods (including the examples listed above), and the final judgement clearly benefits from a human in the loop who can look at context and visual details. The pipeline itself evolved gradually: at the beginning only a few basic strategies were implemented and tuned via simple thresholds, but over time more tools were added, such as a fast perceptual hash (pHash) or FAISS-based extension of the deep embedding approach (ResNet features with nearest-neighbour search), the last implemented two requiring less computational time. Together, these components form a flexible framework where automated scoring narrows down candidates
   
